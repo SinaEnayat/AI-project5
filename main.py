@@ -1,44 +1,65 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
 
-# Load the dataset
-csv_file_path = r'E:\Amir kabir university\Term5\hooshh\creditcard.csv'
+
+csv_file_path = 'E:\Amir kabir university\Term5\hooshh\creditcard.csv'
+
 df = pd.read_csv(csv_file_path)
 
-# Remove duplicate rows
-df = df.drop_duplicates()
-
-# Split the dataset into features (X) and target variable (y)
-X = df.drop('Class', axis=1)  # Adjust 'target_column_name' to your actual target column
-y = df['Class']
-
-# Split into training and testing sets using a fixed random state
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-# Normalize the features using StandardScaler
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-
-# Implement Logistic Regression model
-logistic_model = LogisticRegression()
-logistic_model.fit(X_train, y_train)
-
-# Make predictions on the test set
-y_pred = logistic_model.predict(X_test)
-
-# Evaluate model performance
-accuracy = accuracy_score(y_test, y_pred)
-print(f'Accuracy: {accuracy * 100:.2f}%')
-
-# Additional evaluation metrics
-print('\nClassification Report:\n', classification_report(y_test, y_pred))
-print('\nConfusion Matrix:\n', confusion_matrix(y_test, y_pred))
-
-# Calculate and print F1 score
-f1 = f1_score(y_test, y_pred)
-print(f'F1 Score: {f1:.2f}')
+column_means = df.mean()
+column_std = df.std()
 
 
+null_counts = df.isnull().sum()
+
+#print(null_counts)
+
+#df = df.fillna(column_means)
+scaler = MinMaxScaler()
+
+df_normalized = pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
+
+#lower_bound = column_means - 2 * column_std
+#upper_bound = column_means + 2 * column_std
+
+#df_no_outliers = df[(df >= lower_bound) & (df <= upper_bound).all(axis=1)]
+
+#remove duplicate records
+df_no_duplicates = df.drop_duplicates()
+
+sample_size = 100000
+num_clusters = 2
+
+df_sample = df.sample(n=sample_size, random_state=42)
+
+kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+kmeans.fit(df_sample)
+
+labels = kmeans.predict(df)
+
+df['Cluster'] = labels
+print(df)
+print("-------------------------------------")
+cluster_stats = df.groupby('Cluster').describe()
+print(cluster_stats)
+print("-------------------------------------")
+
+cluster_counts = df['Cluster'].value_counts()
+print(cluster_counts)
+print("-------------------------------------")
+conf_matrix = confusion_matrix(df['Class'], df['Cluster'])
+
+# نمایش ماتریس همبستگی
+print("Confusion Matrix:")
+print(conf_matrix)
+print("-------------------------------------")
+
+TN, FP, FN, TP = conf_matrix.ravel()
+
+# محاسبه دقت
+accuracy = (TP + TN) / (TP + TN + FP + FN)
+
+# نمایش دقت
+print("Accuracy:", accuracy)
